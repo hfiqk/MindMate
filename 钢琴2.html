@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>living room</title>
+<style>
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#ffffff;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+canvas{display:block;}
+</style>
+</head>
+<body>
+<script>
+window.addEventListener('error',function(e){
+  var d=document.getElementById('__err');
+  if(!d){d=document.createElement('div');d.id='__err';
+    d.style.cssText='position:fixed;top:0;left:0;right:0;background:#ffd0d0;color:#900;padding:10px;font:12px/1.4 monospace;z-index:99999;white-space:pre-wrap;';
+    document.body.appendChild(d);}
+  d.textContent+='ERROR: '+e.message+'\n  at '+(e.filename||'')+':'+e.lineno+'\n';
+});
+if(typeof window.RoomAudio==='undefined'){
+  window.RoomAudio={unlock:function(){},sfx:function(){},loop:function(){}};
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
+<script src="audio.js"></script>
+<script>
+(function(){
+if(typeof THREE==='undefined'){throw new Error('three.js 未加载');}
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xffffff);
+const camera=new THREE.PerspectiveCamera(38,window.innerWidth/window.innerHeight,0.1,200);
+camera.position.set(14,10.5,14);
+camera.lookAt(0,1.9,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setClearColor(0xffffff,1);
+renderer.localClippingEnabled=true;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const MAT=new THREE.LineBasicMaterial({color:0x000000});
+const HIDE=new THREE.MeshBasicMaterial({visible:false});
+const FILL=new THREE.MeshBasicMaterial({color:0xffffff,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:2});
+const OUTMAT=new THREE.LineBasicMaterial({color:0x000000});
+const OUTFILL=new THREE.MeshBasicMaterial({color:0xffffff,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+function ol(o){o.material=OUTMAT;return o;}
+
+function V(x,y,z){return new THREE.Vector3(x,y,z);}
+function geo(pts){const a=[];for(const p of pts)a.push(V(p[0],p[1],p[2]));return new THREE.BufferGeometry().setFromPoints(a);}
+function line(pts){return new THREE.Line(geo(pts),MAT);}
+function loop(pts){return new THREE.LineLoop(geo(pts),MAT);}
+function edge(g,t){
+  const grp=new THREE.Group();
+  grp.add(new THREE.Mesh(g,FILL));
+  grp.add(new THREE.LineSegments(new THREE.EdgesGeometry(g,t===undefined?20:t),MAT));
+  return grp;
+}
+function box(w,h,d){return edge(new THREE.BoxGeometry(w,h,d));}
+function put(o,x,y,z,rx,ry,rz,parent){o.position.set(x,y,z);if(rx)o.rotation.x=rx;if(ry)o.rotation.y=ry;if(rz)o.rotation.z=rz;(parent||scene).add(o);return o;}
+function circleXY(r,n){const a=[];n=n||40;for(let i=0;i<n;i++){const t=i/n*Math.PI*2;a.push([Math.cos(t)*r,Math.sin(t)*r,0]);}return loop(a);}
+function circleXZ(r,n){const a=[];n=n||40;for(let i=0;i<n;i++){const t=i/n*Math.PI*2;a.push([Math.cos(t)*r,0,Math.sin(t)*r]);}return loop(a);}
+function rectXY(w,h){return loop([[-w/2,-h/2,0],[w/2,-h/2,0],[w/2,h/2,0],[-w/2,h/2,0]]);}
+function fillCircle(r,n){return new THREE.Mesh(new THREE.CircleGeometry(r,n||40),FILL);}
+function fillPlane(w,h){return new THREE.Mesh(new THREE.PlaneGeometry(w,h),FILL);}
+function E(x){return x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2;}
+
+/* ================= 房间外壳 ================= */
+put(new THREE.Mesh(new THREE.PlaneGeometry(12,12),FILL),0,-0.002,0,-Math.PI/2,0,0);
+put(loop([[-6,0,-6],[6,0,-6],[6,0,6],[-6,0,6]]),0,0.01,0);
+for(let z=-5.2;z<6;z+=0.8) put(line([[-6,0.011,z],[6,0.011,z]]),0,0,0);
+for(let x=-5.2;x<6;x+=0.8) put(line([[x,0.011,-6],[x,0.011,6]]),0,0,0);
+
+put(box(12,7,0.24),0,3.5,-6.12);
+
+const wallShape=new THREE.Shape();
+wallShape.moveTo(-6,0);wallShape.lineTo(6,0);wallShape.lineTo(6,7);wallShape.lineTo(-6,7);wallShape.closePath();
+const wallHole=new THREE.Path();
+wallHole.moveTo(-1.5,2.2);wallHole.lineTo(1.5,2.2);wallHole.lineTo(1.5,4.9);wallHole.lineTo(-1.5,4.9);wallHole.closePath();
+wallShape.holes.push(wallHole);
+put(edge(new THREE.ExtrudeGeometry(wallShape,{depth:0.24,bevelEnabled:false})),-6.0,0,0,0,-Math.PI/2,0);
+
+put(box(12,0.32,0.07),0,0.16,-5.985);
+put(box(0.07,0.32,12),-5.985,0.16,0);
+put(box(12,0.07,0.05),0,1.05,-5.97);
+put(box(0.05,0.07,12),-5.97,1.05,0);
+put(box(12,0.14,0.09),0,6.86,-5.95);
+put(box(0.09,0.14,12),-5.95,6.86,0);
+put(rectXY(0.16,0.24),1.9,0.45,-5.955);
+
+const switchG=new THREE.Group(); scene.add(switchG);
+put(rectXY(0.16,0.26),-2.8,3.1,-5.955,0,0,0,switchG);
+put(rectXY(0.1,0.18),-2.8,3.1,-5.95,0,0,0,switchG);
+const knobG=new THREE.Group(); put(knobG,-2.8,3.1,-5.94,0,0,-0.5,switchG);
+put(line([[0,-0.05,0],[0,0.05,0]]),0,0,0,0,0,0,knobG);
+
+/* ================= 门 ================= */
+const doorFrameG=new THREE.Group(); scene.add(doorFrameG);
+put(line([[-5.18,0,-5.97],[-5.18,4.35,-5.97]]),0,0,0,0,0,0,doorFrameG);
+put(line([[-3.32,0,-5.97],[-3.32,4.35,-5.97]]),0,0,0,0,0,0,doorFrameG);
+put(line([[-5.18,4.35,-5.97],[-3.32,4.35,-5.97]]),0,0,0,0,0,0,doorFrameG);
+put(line([[-5.08,0,-5.96],[-5.08,4.25,-5.96],[-3.42,4.25,-5.96],[-3.42,0,-5.96]]),0,0,0,0,0,0,doorFrameG);
+const doorG=new THREE.Group(); put(doorG,-5.08,0,-5.94);
+put(box(1.62,4.2,0.08),0.81,2.1,0,0,0,0,doorG);
+put(rectXY(1.1,1.5),0.81,3.3,0.05,0,0,0,doorG);
+put(rectXY(1.1,1.7),0.81,1.15,0.05,0,0,0,doorG);
+put(circleXY(0.07,16),1.45,2.05,0.06,0,0,0,doorG);
+put(rectXY(2.1,1.0),-4.25,0.02,-5.0,-Math.PI/2,0,0);
+put(rectXY(1.7,0.66),-4.25,0.02,-5.0,-Math.PI/2,0,0);
+
+/* ================= 窗户 ================= */
+const WZ=0;
+const winFrameG=new THREE.Group(); scene.add(winFrameG);
+put(rectXY(3.3,2.9),-5.97,3.55,WZ,0,Math.PI/2,0,winFrameG);
+put(ol(rectXY(3.06,2.76)),-5.96,3.55,WZ,0,Math.PI/2,0,winFrameG);
+put(box(0.3,0.1,3.7),-5.85,2.1,WZ,0,0,0,winFrameG);
+
+const sashL=new THREE.Group(); put(sashL,-6.05,3.55,WZ-1.5);
+const sashR=new THREE.Group(); put(sashR,-6.05,3.55,WZ+1.5);
+function sashGeo(parent,dir){
+  const z0=0.03*dir,z1=1.47*dir,zm=dir*0.75;
+  put(ol(loop([[0,-1.3,z0],[0,-1.3,z1],[0,1.3,z1],[0,1.3,z0]])),0,0,0,0,0,0,parent);
+  put(ol(line([[0,0,z0],[0,0,z1]])),0,0,0,0,0,0,parent);
+  put(ol(line([[0,-1.3,zm],[0,1.3,zm]])),0,0,0,0,0,0,parent);
+}
+sashGeo(sashL,1); sashGeo(sashR,-1);
+
+const outsideG=new THREE.Group(); put(outsideG,-8,3.55,0);
+put(new THREE.Mesh(new THREE.PlaneGeometry(4.6,3.6),OUTFILL),0,0,0,0,Math.PI/2,0,outsideG);
+
+/* ================= 窗帘 ================= */
+const curtainG=new THREE.Group(); scene.add(curtainG);
+put(line([[-5.88,4.95,-2.1],[-5.88,4.95,2.1]]),0,0,0,0,0,0,curtainG);
+put(circleXY(0.05,12),-5.88,4.95,-2.1,0,0,0,curtainG);
+put(circleXY(0.05,12),-5.88,4.95,2.1,0,0,0,curtainG);
+
+function buildCurtain(w,n){
+  const g=new THREE.Group();
+  const fold=t=>Math.sin(t*Math.PI*3.2)*0.045;
+  for(let i=0;i<=n;i++){
+    const t=i/n, zz=t*w, dx=fold(t);
+    g.add(line([[dx,0,zz],[dx,-2.75,zz]]));
+  }
+  const top=[],bot=[];
+  for(let i=0;i<=n;i++){const t=i/n,zz=t*w,dx=fold(t);top.push([dx,0,zz]);bot.push([dx,-2.75,zz]);}
+  g.add(line(top)); g.add(line(bot));
+  return g;
+}
+const CURT_W=1.9;
+const curtainL=buildCurtain(CURT_W,9);
+put(curtainL,-5.88,4.9,-1.95,0,0,0,curtainG);
+const curtainR=buildCurtain(CURT_W,9);
+curtainR.rotation.y=Math.PI;
+put(curtainR,-5.88,4.9,1.95,0,0,0,curtainG);
+
+/* ================= 钢琴（靠窗、体型大、键盘大而醒目） ================= */
+const pianoG=new THREE.Group(); put(pianoG,-5.4,0,0);
+
+put(box(1.1,0.12,3.05),0,0.06,0,0,0,0,pianoG);
+put(box(1.1,1.95,3.05),0,1.095,0,0,0,0,pianoG);
+put(box(0.45,0.14,3.05),0.775,0.93,0,0,0,0,pianoG);
+put(box(1.15,0.08,3.1),0,2.11,0,0,0,0,pianoG);
+put(line([[-0.575,2.16,-1.55],[-0.575,2.16,1.55]]),0,0,0,0,0,0,pianoG);
+put(rectXY(2.75,1.5),0.553,1.2,0,0,Math.PI/2,0,pianoG);
+put(rectXY(2.45,1.25),0.555,1.2,0,0,Math.PI/2,0,pianoG);
+put(box(0.09,0.12,0.16),0.99,0.24,-0.42,0,0,0,pianoG);
+put(box(0.09,0.12,0.16),0.99,0.24,0,0,0,0,pianoG);
+put(box(0.09,0.12,0.16),0.99,0.24,0.42,0,0,0,pianoG);
+
+const pianoKeys=[];
+const whiteN=22;
+const wkZ0=-1.45, wkZ1=1.45;
+const wkStep=(wkZ1-wkZ0)/whiteN;
+const wkY=1.04;
+for(let i=0;i<whiteN;i++){
+  const zz=wkZ0+wkStep*(i+0.5);
+  const key=box(0.42,0.065,wkStep-0.014);
+  put(key,0.76,wkY,zz,0,0,0,pianoG);
+  key.userData.baseY=wkY;
+  pianoKeys.push(key);
+}
+for(let i=0;i<whiteN-1;i++){
+  const m=i%7;
+  if(m===2||m===6)continue;
+  const zz=wkZ0+wkStep*(i+1);
+  put(box(0.24,0.075,wkStep*0.6),0.65,wkY+0.04,zz,0,0,0,pianoG);
+}
+put(line([[0.99,1.005,wkZ0],[0.99,1.005,wkZ1]]),0,0,0,0,0,0,pianoG);
+put(line([[0.55,1.005,wkZ0],[0.55,1.005,wkZ1]]),0,0,0,0,0,0,pianoG);
+
+/* ================= 琴凳 ================= */
+const benchG=new THREE.Group(); put(benchG,-3.85,0,0);
+put(box(0.6,0.1,0.85),0,0.55,0,0,0,0,benchG);
+put(box(0.09,0.55,0.09),-0.24,0.275,-0.35,0,0,0,benchG);
+put(box(0.09,0.55,0.09),0.24,0.275,-0.35,0,0,0,benchG);
+put(box(0.09,0.55,0.09),-0.24,0.275,0.35,0,0,0,benchG);
+put(box(0.09,0.55,0.09),0.24,0.275,0.35,0,0,0,benchG);
+
+/* ================= 天花板吊灯（锥形筒灯，正上方） ================= */
+const pendLampRoot=new THREE.Group(); scene.add(pendLampRoot);
+put(line([[0,7,0],[0,5.72,0]]),0,0,0,0,0,0,pendLampRoot);
+put(circleXZ(0.18,16),0,6.99,0,0,0,0,pendLampRoot);
+const pendShade=new THREE.Group(); put(pendShade,0,5.35,0,0,0,0,pendLampRoot);
+put(edge(new THREE.CylinderGeometry(0.16,0.58,0.72,20)),0,0,0,0,0,0,pendShade);
+put(circleXZ(0.16,20),0,0.36,0,0,0,0,pendShade);
+put(circleXZ(0.58,20),0,-0.36,0,0,0,0,pendShade);
+for(let i=1;i<3;i++){
+  const r=0.16+0.42*(i/3);
+  const y=0.36-0.72*(i/3);
+  put(circleXZ(r,20),0,y,0,0,0,0,pendShade);
+}
+
+/* ================= 沙发 ================= */
+const sofaG=new THREE.Group(); put(sofaG,0,0,-4.9);
+put(box(4.4,0.6,1.8),0,0.6,0,0,0,0,sofaG);
+put(box(4.4,1.2,0.36),0,1.65,-0.72,0,0,0,sofaG);
+put(box(0.42,0.85,1.8),-1.99,1.1,0,0,0,0,sofaG);
+put(box(0.42,0.85,1.8),1.99,1.1,0,0,0,0,sofaG);
+put(box(1.9,0.35,1.5),-0.98,1.05,0.05,0,0,0,sofaG);
+put(box(1.9,0.35,1.5),0.98,1.05,0.05,0,0,0,sofaG);
+put(box(1.85,0.7,0.28),-0.98,1.7,-0.5,0.14,0,0,sofaG);
+put(box(1.85,0.7,0.28),0.98,1.7,-0.5,0.14,0,0,sofaG);
+for(const lx of [-1.95,1.95]) for(const lz of [-0.75,0.75]) put(box(0.12,0.3,0.12),lx,0.15,lz,0,0,0,sofaG);
+const pillowA=new THREE.Group(); put(pillowA,-1.25,1.82,-0.35,-0.18,0.1,0.12,sofaG);
+put(box(0.78,0.78,0.26),0,0,0,0,0,0,pillowA);
+put(rectXY(0.56,0.56),0,0,0.135,0,0,0,pillowA);
+const pillowB=new THREE.Group(); put(pillowB,1.25,1.82,-0.35,-0.18,-0.1,-0.12,sofaG);
+put(box(0.78,0.78,0.26),0,0,0,0,0,0,pillowB);
+put(rectXY(0.56,0.56),0,0,0.135,0,0,0,pillowB);
+put(box(0.34,0.05,0.46),1.99,1.56,0,0,0.15,0,sofaG);
+put(line([[1.99,1.585,-0.2],[1.99,1.585,0.2]]),0,0,0,0,0,0,sofaG);
+put(box(0.08,0.025,0.2),-1.99,1.55,0.14,0,-0.2,0,sofaG);
+put(line([[1.99,1.525,-0.45],[2.15,1.525,-0.45],[2.3,1.35,-0.4],[2.3,0.85,-0.32]]),0,0,0,0,0,0,sofaG);
+put(line([[1.99,1.525,0.45],[2.15,1.525,0.45],[2.3,1.35,0.4],[2.3,0.85,0.32]]),0,0,0,0,0,0,sofaG);
+put(line([[2.3,0.85,-0.32],[2.3,0.85,0.32]]),0,0,0,0,0,0,sofaG);
+
+/* ================= 地毯 ================= */
+const rugG=new THREE.Group(); scene.add(rugG);
+const rugDisc=new THREE.Mesh(new THREE.CircleGeometry(1,48),FILL);
+rugDisc.scale.set(2.7,1.8,1);
+rugDisc.rotation.x=-Math.PI/2;
+rugDisc.position.set(0,0.012,-3.3);
+rugG.add(rugDisc);
+for(const rr of [[2.7,1.8],[2.15,1.4],[1.55,1.0]]){
+  const pts=[];
+  for(let k=0;k<64;k++){const a=k/64*Math.PI*2;pts.push([Math.cos(a)*rr[0],0,Math.sin(a)*rr[1]]);}
+  put(loop(pts),0,0.02,-3.3,0,0,0,rugG);
+}
+
+/* ================= 茶几 ================= */
+const tableG=new THREE.Group(); put(tableG,0,0,-2.3);
+put(box(1.95,0.07,1.1),0,0.7,0,0,0,0,tableG);
+for(const lx of [-0.85,0.85]) for(const lz of [-0.44,0.44]) put(box(0.07,0.7,0.07),lx,0.35,lz,0,0,0,tableG);
+put(box(1.6,0.05,0.85),0,0.24,0,0,0,0,tableG);
+put(box(0.32,0.04,0.22),-0.6,0.76,0.15,0,0.2,0,tableG);
+put(box(0.26,0.05,0.18),-0.59,0.8,0.15,0,0.1,0,tableG);
+const magG=new THREE.Group(); put(magG,-0.5,0.745,-0.25,0,0.25,0,tableG);
+put(box(0.46,0.025,0.34),0,0,0,0,0,0,magG);
+put(line([[0,0.014,-0.17],[0,0.014,0.17]]),0,0,0,0,0,0,magG);
+put(line([[-0.18,0.014,-0.1],[0.18,0.014,-0.1]]),0,0,0,0,0,0,magG);
+const remoteG=new THREE.Group(); put(remoteG,0.7,0.745,0.2,0,0.3,0,tableG);
+put(box(0.1,0.03,0.26),0,0,0,0,0,0,remoteG);
+for(let i=0;i<3;i++) put(circleXZ(0.009,8),0,0.016,-0.07+i*0.05,0,0,0,remoteG);
+
+/* ================= 落地灯 ================= */
+const lampG=new THREE.Group(); put(lampG,-3.0,0,-4.7);
+put(edge(new THREE.CylinderGeometry(0.36,0.4,0.07,16)),0,0.035,0,0,0,0,lampG);
+put(edge(new THREE.CylinderGeometry(0.035,0.035,1.85,8)),0,0.96,0,0,0,0,lampG);
+const shadeG=new THREE.Group(); put(shadeG,0,1.88,0,0,0,0,lampG);
+put(edge(new THREE.CylinderGeometry(0.42,0.55,0.6,18)),0,0.3,0,0,0,0,shadeG);
+put(circleXZ(0.42,18),0,0.6,0,0,0,0,shadeG);
+const lampRays=new THREE.Group(); put(lampRays,0,-0.05,0,0,0,0,shadeG); lampRays.visible=false;
+put(line([[0.45,-0.05,0],[0.68,-0.36,0]]),0,0,0,0,0,0,lampRays);
+put(line([[0.35,-0.12,0],[0.44,-0.48,0]]),0,0,0,0,0,0,lampRays);
+put(line([[-0.45,-0.05,0],[-0.68,-0.36,0]]),0,0,0,0,0,0,lampRays);
+put(line([[-0.35,-0.12,0],[-0.44,-0.48,0]]),0,0,0,0,0,0,lampRays);
+
+/* ================= 绿萝 ================= */
+const pothosG=new THREE.Group(); put(pothosG,2.9,0,-4.7);
+put(edge(new THREE.CylinderGeometry(0.42,0.34,0.65,16)),0,0.325,0,0,0,0,pothosG);
+put(edge(new THREE.CylinderGeometry(0.46,0.46,0.07,16)),0,0.68,0,0,0,0,pothosG);
+put(circleXZ(0.39,20),0,0.65,0,0,0,0,pothosG);
+const vineGroup=new THREE.Group(); put(vineGroup,0,0.68,0,0,0,0,pothosG);
+function makeVine(ang,len,droop,leafSize){
+  const pts=[];
+  const N=10;
+  for(let i=0;i<=N;i++){
+    const t=i/N;
+    const r=0.14+Math.sin(t*Math.PI*0.65)*len*0.78;
+    const y=Math.sin(t*Math.PI*0.5)*0.95 - t*t*droop;
+    pts.push(V(Math.cos(ang)*r,y,Math.sin(ang)*r));
+  }
+  const curve=new THREE.CatmullRomCurve3(pts);
+  vineGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(22)),MAT));
+  for(let i=2;i<=N;i+=2){
+    const p=pts[i];
+    const leafG=new THREE.Group();
+    leafG.position.copy(p);
+    leafG.rotation.y=ang+0.4;
+    leafG.rotation.z=-0.35;
+    const lp=[];
+    const S=leafSize;
+    for(let k=0;k<=10;k++){const t=k/10;const w=Math.sin(t*Math.PI)*S*0.4;lp.push([-w,t*S,0]);}
+    for(let k=10;k>=0;k--){const t=k/10;const w=Math.sin(t*Math.PI)*S*0.4;lp.push([w,t*S,0]);}
+    leafG.add(loop(lp));
+    vineGroup.add(leafG);
+  }
+}
+makeVine(0.0,1.15,0.6,0.36);
+makeVine(0.9,1.05,1.05,0.34);
+makeVine(1.8,1.25,0.5,0.38);
+makeVine(2.7,0.95,1.15,0.32);
+makeVine(3.6,1.2,0.7,0.36);
+makeVine(4.5,1.0,1.0,0.33);
+makeVine(5.4,1.3,0.55,0.4);
+
+/* ================= 电视（沙发正前方，屏幕空白） ================= */
+const tvG=new THREE.Group(); put(tvG,0,0,-1.0,0,Math.PI,0);
+put(box(2.6,0.6,0.55),0,0.3,0,0,0,0,tvG);
+put(box(2.7,0.07,0.6),0,0.63,0,0,0,0,tvG);
+for(const lx of [-1.05,1.05]) for(const lz of [-0.2,0.2]) put(box(0.09,0.32,0.09),lx,0.17,lz,0,0,0,tvG);
+put(rectXY(0.9,0.35),-0.6,0.33,0.286,0,0,0,tvG);
+put(rectXY(0.9,0.35),0.6,0.33,0.286,0,0,0,tvG);
+put(box(0.55,0.05,0.32),0,0.665,0,0,0,0,tvG);
+put(box(0.1,0.42,0.1),0,0.9,0,0,0,0,tvG);
+put(box(1.7,1.05,0.08),0,1.62,0,0,0,0,tvG);
+put(rectXY(1.54,0.9),0,1.62,0.045,0,0,0,tvG);
+for(let i=0;i<6;i++) put(line([[-0.6,-0.38+i*0.11,-0.041],[0.6,-0.38+i*0.11,-0.041]]),0,1.62,0,0,0,0,tvG);
+put(rectXY(0.24,0.07),0,0.92,-0.041,0,0,0,tvG);
+put(rectXY(0.44,0.14),-0.42,0.78,-0.041,0,0,0,tvG);
+put(circleXY(0.028,10),-0.24,0.78,-0.04,0,0,0,tvG);
+put(circleXY(0.028,10),-0.06,0.78,-0.04,0,0,0,tvG);
+put(circleXY(0.028,10),0.12,0.78,-0.04,0,0,0,tvG);
+
+/* ================= 书架 ================= */
+const shelfG=new THREE.Group(); put(shelfG,4.6,0,-5.5);
+put(box(0.07,3.5,0.8),-0.75,1.75,0,0,0,0,shelfG);
+put(box(0.07,3.5,0.8),0.75,1.75,0,0,0,0,shelfG);
+for(const y of [0.05,0.92,1.82,2.72,3.4]) put(box(1.57,0.06,0.8),0,y,0,0,0,0,shelfG);
+const bookH=[0.5,0.56,0.46,0.54,0.48,0.52,0.44,0.5];
+let bx=-0.66;
+for(let i=0;i<bookH.length;i++){
+  const bw=0.1+(i%3)*0.015;
+  put(box(bw,bookH[i],0.46),bx+bw/2,0.08+bookH[i]/2,0,0,0,0,shelfG);
+  bx+=bw+0.016;
+}
+const bookG=new THREE.Group(); put(bookG,0,0,0,0,0,0,shelfG);
+put(box(0.15,0.6,0.48),0,0.38,0,0,0,0,bookG);
+put(line([[-0.075,0.22,0.241],[0.075,0.22,0.241]]),0,0,0,0,0,0,bookG);
+put(line([[-0.075,0.38,0.241],[0.075,0.38,0.241]]),0,0,0,0,0,0,bookG);
+bookG.position.set(-0.35,0.08,0);
+put(box(0.48,0.07,0.36),0.24,0.96,0,0,0.2,0,shelfG);
+put(box(0.42,0.07,0.34),0.26,1.04,0,0,-0.15,0,shelfG);
+put(edge(new THREE.CylinderGeometry(0.12,0.15,0.36,12)),-0.34,1.14,0,0,0,0,shelfG);
+
+/* ================= 挂钟 ================= */
+const clockG=new THREE.Group(); scene.add(clockG);
+put(fillCircle(0.78),-1.4,3.9,-5.965,0,0,0,clockG);
+put(circleXY(0.78),-1.4,3.9,-5.96,0,0,0,clockG);
+put(circleXY(0.71),-1.4,3.9,-5.958,0,0,0,clockG);
+for(let i=0;i<12;i++){
+  const a=i/12*Math.PI*2,c=Math.cos(a),s=Math.sin(a);
+  const r0=(i%3===0?0.58:0.62);
+  const r1=(i%3===0?0.71:0.68);
+  put(line([[c*r0,s*r0,0],[c*r1,s*r1,0]]),-1.4,3.9,-5.955,0,0,0,clockG);
+}
+const hourH=put(line([[0,-0.06,0],[0,0.30,0]]),-1.4,3.9,-5.945,0,0,0,clockG);
+const minH=put(line([[0,-0.07,0],[0,0.46,0]]),-1.4,3.9,-5.94,0,0,0,clockG);
+const secH=put(line([[0,-0.09,0],[0,0.55,0]]),-1.4,3.9,-5.938,0,0,0,clockG);
+put(circleXY(0.05,12),-1.4,3.9,-5.935,0,0,0,clockG);
+
+/* ================= 墙画 ================= */
+const picG=new THREE.Group(); put(picG,1.3,3.9,-5.94);
+put(fillPlane(1.8,1.4),0,0,0,0,0,0,picG);
+put(loop([[-0.9,-0.7,0],[0.9,-0.7,0],[0.9,0.7,0],[-0.9,0.7,0]]),0,0,0,0,0,0,picG);
+put(loop([[-0.78,-0.58,0],[0.78,-0.58,0],[0.78,0.58,0],[-0.78,0.58,0]]),0,0,0,0,0,0,picG);
+put(line([[-0.6,-0.35,0],[-0.25,0.18,0],[0.05,-0.12,0],[0.42,0.32,0],[0.65,-0.06,0]]),0,0,0,0,0,0,picG);
+put(circleXY(0.12,16),-0.38,0.32,0,0,0,0,picG);
+
+/* ================= 交互系统 ================= */
+const items=[],proxies=[];
+function proxy(w,h,d,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),HIDE);m.position.set(x,y,z);return m;}
+function mkItem(px,cfg){
+  const it=Object.assign({p:0,target:0,rate:1.6,v:0,tv:0,apply:null,action:null,bold:null,boldClones:[]},cfg);
+  if(!it.action) it.action=function(){it.target=it.target?0:1;};
+  (Array.isArray(px)?px:[px]).forEach(function(m){m.userData.it=it;scene.add(m);proxies.push(m);});
+  items.push(it); return it;
+}
+
+/* 1 门 */
+mkItem(proxy(2.4,4.4,2.4,-4.6,2.2,-5.2),{rate:1.4,bold:[doorG,doorFrameG],
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx(it.target?'door':'doorClose');},
+  apply:function(it){doorG.rotation.y=-1.9*E(it.p);}});
+
+/* 2 窗户 */
+const windowIt=mkItem([proxy(0.3,0.3,3.0,-5.9,4.88,0),
+        proxy(0.3,2.4,0.3,-5.9,3.5,-1.62),proxy(0.3,2.4,0.3,-5.9,3.5,1.62)],
+  {rate:1.4,bold:[sashL,sashR,winFrameG],
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx(it.target?'windowOpen':'windowClose');},
+  apply:function(it){const e=E(it.p);sashL.rotation.y=-1.45*e;sashR.rotation.y=1.45*e;}});
+
+/* 3 窗帘 */
+mkItem([proxy(0.3,1.4,1.4,-5.88,2.7,-0.8),proxy(0.3,1.4,1.4,-5.88,2.7,0.8)],
+  {p:0,target:0,rate:1.3,bold:curtainG,
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx(it.target?'blindsUp':'blindsDown');},
+  apply:function(it){const s=1-0.82*E(it.p);curtainL.scale.z=s;curtainR.scale.z=s;}});
+
+/* 4 钢琴 */
+mkItem(proxy(1.8,2.3,3.2,-5.2,1.15,0),{rate:1.0,bold:pianoG,
+  action:function(it){
+    it.p=0; it.target=1;
+    RoomAudio.sfx('mug');
+    RoomAudio.sfx('tick');
+    RoomAudio.sfx('book');
+  },
+  apply:function(it,dt,t){
+    const totalKeys=pianoKeys.length;
+    const phaseSpan=totalKeys+6;
+    for(let i=0;i<totalKeys;i++){
+      const k=pianoKeys[i];
+      const kp=it.p*phaseSpan - i;
+      let press=0;
+      if(kp>0 && kp<1.8){
+        press=Math.sin(kp/1.8*Math.PI)*0.055;
+      }
+      k.position.y=k.userData.baseY - press;
+    }
+    if(it.p>=1 && it.target===1){
+      it.p=0; it.target=0;
+      for(let i=0;i<totalKeys;i++) pianoKeys[i].position.y=pianoKeys[i].userData.baseY;
+    }
+  }});
+
+/* 5 沙发 */
+mkItem(proxy(4.4,2.3,1.9,0,1.15,-4.9),{rate:1.3,bold:sofaG,
+  action:function(it){if(it.p===0&&it.target===0){it.target=1;RoomAudio.sfx('pillow');}},
+  apply:function(it){
+    const r=E(it.p)*Math.PI*2;
+    pillowA.rotation.set(-0.18,r,0.12);
+    pillowB.rotation.set(-0.18,-r,-0.12);
+    if(it.p>=1&&it.target===1){it.p=0;it.target=0;
+      pillowA.rotation.set(-0.18,0,0.12);
+      pillowB.rotation.set(-0.18,0,-0.12);}
+  }});
+
+/* 6 落地灯 */
+const lampIt=mkItem(proxy(1.2,2.7,1.2,-3.0,1.35,-4.7),{rate:1.8,bold:lampG,
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx('lamp');},
+  apply:function(it){shadeG.rotation.z=-0.06*E(it.p);lampRays.visible=it.p>0.55;}});
+
+/* 7 绿萝 */
+mkItem(proxy(1.8,2.4,1.8,2.9,1.2,-4.7),{p:1,target:1,rate:1,bold:pothosG,
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx('plant');RoomAudio.loop('plantSway',it.target===1);},
+  apply:function(it,dt,t){
+    vineGroup.rotation.z=0.06*Math.sin(t*1.3)*it.p;
+    vineGroup.rotation.x=0.05*Math.cos(t*1.0)*it.p;}});
+
+/* 8 书 */
+mkItem(proxy(0.4,0.9,0.8,4.25,0.45,-5.4),{rate:1.5,bold:bookG,
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx('book');},
+  apply:function(it){bookG.position.z=0.32*E(it.p);}});
+
+/* 9 挂钟 */
+mkItem(proxy(1.8,1.8,0.4,-1.4,3.9,-5.8),{p:1,target:1,rate:1.6,bold:clockG,
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx('clockToggle');},
+  apply:function(it,dt,t){
+    const nd=new Date();
+    const s=nd.getSeconds()+nd.getMilliseconds()/1000;
+    const m=nd.getMinutes()+s/60;
+    const h=(nd.getHours()%12)+m/60;
+    secH.rotation.z=-s/60*Math.PI*2;
+    minH.rotation.z=-m/60*Math.PI*2;
+    hourH.rotation.z=-h/12*Math.PI*2;
+    const beat=Math.floor(t*2+0.5);
+    if(it.p>0.5&&beat!==it.lastBeat){RoomAudio.sfx(beat%2?'tick':'tock');}
+    it.lastBeat=beat;
+  }});
+
+/* 10 墙画 */
+mkItem(proxy(1.9,1.5,0.4,1.3,3.9,-5.8),{rate:1.6,bold:picG,
+  action:function(it){it.target=it.target?0:1;RoomAudio.sfx('picture');},
+  apply:function(it){picG.rotation.z=0.08*E(it.p);}});
+
+/* ---------------- 悬停加粗 ---------------- */
+let BOLDMAT=null,BOLDMAT_OUT=null;
+if(THREE.LineSegments2&&THREE.LineSegmentsGeometry&&THREE.LineMaterial){
+  BOLDMAT=new THREE.LineMaterial({color:0x000000,linewidth:1.5});
+  BOLDMAT.resolution.set(window.innerWidth,window.innerHeight);
+  BOLDMAT.polygonOffset=true;BOLDMAT.polygonOffsetFactor=-2;BOLDMAT.polygonOffsetUnits=-2;
+  BOLDMAT_OUT=new THREE.LineMaterial({color:0x000000,linewidth:1.5});
+  BOLDMAT_OUT.resolution.set(window.innerWidth,window.innerHeight);
+  BOLDMAT_OUT.polygonOffset=true;BOLDMAT_OUT.polygonOffsetFactor=-2;BOLDMAT_OUT.polygonOffsetUnits=-2;
+}
+function lineSegments(o){
+  const pos=o.geometry.attributes.position;
+  if(!pos)return null;
+  const arr=[];
+  if(o.isLineSegments){
+    for(let i=0;i<pos.count;i++) arr.push(pos.getX(i),pos.getY(i),pos.getZ(i));
+  }else if(o.isLine||o.isLineLoop){
+    const n=pos.count;
+    for(let i=0;i<n-1;i++) arr.push(pos.getX(i),pos.getY(i),pos.getZ(i),pos.getX(i+1),pos.getY(i+1),pos.getZ(i+1));
+    if(o.isLineLoop&&n>2) arr.push(pos.getX(n-1),pos.getY(n-1),pos.getZ(n-1),pos.getX(0),pos.getY(0),pos.getZ(0));
+  }else return null;
+  return arr;
+}
+function boldify(root,out){
+  const targets=[];
+  root.traverse(function(o){
+    if((o.isLine||o.isLineLoop||o.isLineSegments)&&!o.userData.noBold) targets.push(o);
+  });
+  targets.forEach(function(o){
+    const seg=lineSegments(o);
+    if(!seg||!seg.length)return;
+    const g=new THREE.LineSegmentsGeometry();
+    g.setPositions(seg);
+    const b=new THREE.LineSegments2(g,o.material===OUTMAT?BOLDMAT_OUT:BOLDMAT);
+    b.visible=false;
+    o.add(b);
+    out.push(b);
+  });
+}
+if(BOLDMAT){
+  items.forEach(function(it){
+    if(!it.bold)return;
+    (Array.isArray(it.bold)?it.bold:[it.bold]).forEach(function(r){boldify(r,it.boldClones);});
+  });
+}
+
+/* ---------------- 拾取 + 悬停 ---------------- */
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+let hovered=null;
+function pick(e){
+  ndc.x=(e.clientX/window.innerWidth)*2-1;
+  ndc.y=-(e.clientY/window.innerHeight)*2+1;
+  ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects(proxies,false);
+  return hits.length?hits[0].object.userData.it:null;
+}
+function setHover(it){
+  if(hovered===it)return;
+  if(hovered)hovered.boldClones.forEach(function(b){b.visible=false;});
+  hovered=it;
+  if(hovered)hovered.boldClones.forEach(function(b){b.visible=true;});
+  document.body.style.cursor=it?'pointer':'';
+}
+window.addEventListener('pointerdown',function(){RoomAudio.unlock();});
+window.addEventListener('pointerdown',function(e){const it=pick(e);if(it&&it.action)it.action(it);});
+window.addEventListener('pointermove',function(e){setHover(pick(e));});
+window.addEventListener('pointerleave',function(){setHover(null);});
+window.addEventListener('resize',function(){
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  if(BOLDMAT)BOLDMAT.resolution.set(window.innerWidth,window.innerHeight);
+  if(BOLDMAT_OUT)BOLDMAT_OUT.resolution.set(window.innerWidth,window.innerHeight);
+});
+
+/* ---------------- 光照系统 ---------------- */
+const lightState={night:false,switchOn:false};
+function updateLight(){
+  const d=new Date();
+  const h=d.getHours()+d.getMinutes()/60;
+  lightState.night=(h>=19||h<7);
+  const roomNight=lightState.night&&!lightState.switchOn;
+  scene.background.set(roomNight?0x000000:0xffffff);
+  MAT.color.set(roomNight?0xffffff:0x000000);
+  FILL.color.set(roomNight?0x000000:0xffffff);
+  if(BOLDMAT)BOLDMAT.color.set(roomNight?0xffffff:0x000000);
+  if(BOLDMAT_OUT)BOLDMAT_OUT.color.set(lightState.night?0xffffff:0x000000);
+  OUTFILL.color.set(lightState.night?0x000000:0xffffff);
+  OUTMAT.color.set(lightState.night?0xffffff:0x000000);
+  const wOpen=windowIt.p>0.4;
+  RoomAudio.loop('dayAmb',!lightState.night&&wOpen);
+  RoomAudio.loop('nightAmb',lightState.night&&wOpen);
+  RoomAudio.loop('hum',lightState.night&&lightState.switchOn);
+}
+
+/* 落地灯锥形光域 */
+const coneA=new THREE.Vector3(-3.0,2.05,-4.7);
+const conePlanes=[];
+for(let k=0;k<24;k++){
+  const ph=k*Math.PI/12;
+  const n=new THREE.Vector3(Math.cos(ph)*1.3,-2.05,Math.sin(ph)*1.3).normalize();
+  const pl=new THREE.Plane(n,-n.dot(coneA));
+  pl.userData={c:-n.dot(coneA)};
+  conePlanes.push(pl);
+}
+MAT.clippingPlanes=conePlanes;
+FILL.clippingPlanes=conePlanes;
+function setClip(on){for(const p of conePlanes)p.constant=on?p.userData.c:1e10;}
+setClip(false);
+function renderNightLit(){
+  const BG=scene.background;
+  setClip(false);
+  renderer.autoClear=true;
+  renderer.render(scene,camera);
+  setClip(true);
+  renderer.autoClear=false;
+  scene.background=null;
+  MAT.color.set(0x000000);FILL.color.set(0xffffff);
+  renderer.render(scene,camera);
+  MAT.color.set(0xffffff);FILL.color.set(0x000000);
+  setClip(false);
+  scene.background=BG;
+}
+
+RoomAudio.loop('chimes',true);
+RoomAudio.loop('plantSway',true);
+
+/* ---------------- 主循环 ---------------- */
+const clockT=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clockT.getDelta(),0.05),t=clockT.elapsedTime;
+  for(const it of items){
+    if(it.p<it.target) it.p=Math.min(it.target,it.p+dt*it.rate);
+    else if(it.p>it.target) it.p=Math.max(it.target,it.p-dt*it.rate);
+    it.v+=(it.tv-it.v)*Math.min(1,dt*2.2);
+    if(it.apply) it.apply(it,dt,t);
+  }
+  updateLight();
+  if(lightState.night&&!lightState.switchOn&&lampIt.p>0.55) renderNightLit();
+  else{renderer.autoClear=true;renderer.render(scene,camera);}
+}
+animate();
+})();
+</script>
+</body>
+</html>
