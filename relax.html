@@ -1,0 +1,276 @@
+<section class="panel" id="panel-relax">
+  <div style="display:flex;gap:16px;">
+    <!-- 左侧竖列钢琴按键，红圈区域全部改成纯黑 -->
+    <div class="piano-column">
+      <div class="white-key" data-target="relax-timer">Timer</div>
+      <div class="black-key"></div>
+
+      <div class="white-key" data-target="relax-draw">Draw</div>
+      <div class="black-key"></div>
+
+      <div class="white-key" data-target="relax-beat">Beat</div>
+      <div class="black-key"></div>
+
+      <div class="white-key" data-target="relax-aid">Aid</div>
+      <div class="black-key"></div>
+
+      <div class="white-key" data-target="relax-trash">Trash</div>
+
+      <div class="piano-rail"></div>
+    </div>
+    <!-- 右侧功能内容区 -->
+    <div style="flex:1;">
+      <div class="relax-panel-wrap">
+        <div class="relax-panel" id="relax-timer">
+          <div class="card">
+            <span class="card__title">Timer</span>
+            <div class="card__content">
+              <div style="font-size:48px;margin:16px 0" id="rtime">25:00</div>
+              <button class="action-btn" id="rt-start">Start</button>
+              <button class="action-btn" id="rt-pause">Pause</button>
+              <button class="action-btn" id="rt-reset">Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="relax-panel" id="relax-draw">
+          <div class="card">
+            <span class="card__title">Draw</span>
+            <div class="card__content">
+              <p>Click card to flip</p>
+              <div class="card-group">
+                <div class="relax-card" data-msg="Take three deep breath">Card1</div>
+                <div class="relax-card" data-msg="Drink a cup of warm water">Card2</div>
+                <div class="relax-card" data-msg="Stare out of window 30s">Card3</div>
+                <div class="relax-card" data-msg="Stretch your shoulder">Card4</div>
+                <div class="relax-card" data-msg="Close eyes and rest">Card5</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="relax-panel" id="relax-beat">
+          <div class="card">
+            <span class="card__title">Beat</span>
+            <div class="card__content">
+              <p>BPM <input id="rbpm" type="number" min="40" max="180" value="80"></p>
+              <div class="pendulum" id="rpen"></div>
+              <button class="action-btn" id="rb-play">Start</button>
+              <button class="action-btn" id="rb-stop">Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="relax-panel" id="relax-aid">
+          <div class="card">
+            <span class="card__title">Aid</span>
+            <div class="card__content">
+              <p id="r-msg">Click button get comfort words</p>
+              <button class="action-btn" id="r-aidbtn">Get Comfort</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="relax-panel" id="relax-trash">
+          <div class="card">
+            <span class="card__title">Trash</span>
+            <div class="card__content">
+              <textarea id="r-ta" placeholder="Write your trouble here..." style="width:100%;min-height:120px;border:2px solid currentColor;background:transparent;color:inherit;padding:8px;"></textarea>
+              <br>
+              <button class="action-btn" id="r-trashbtn">Throw away</button>
+              <div id="r-tip"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .piano-column{
+      width:220px;
+      display:grid;
+      grid-auto-flow:row;
+      row-gap:0; /* 去掉间隙，彻底消除白色空隙 */
+      background:#000;
+      padding:16px 8px;
+    }
+    .white-key{
+      width:100%;
+      height:64px;
+      background:#fff;
+      color:#000;
+      border:2px solid #000;
+      box-shadow:4px 4px #333;
+      cursor:pointer;
+      padding-left:12px;
+      display:flex;
+      align-items:center;
+      font-size:17px;
+      user-select:none;
+      transition:0.1s;
+    }
+    /* 红圈选中的黑键区域，完全纯黑，无白边 */
+    .black-key{
+      width:62%;
+      height:44px;
+      margin-left:0;
+      background:#000;
+      border:none;
+      box-shadow:none;
+      pointer-events:none;
+      padding:0;
+      user-select:none;
+    }
+    .white-key.active{
+      transform:translate(2px,2px);
+      box-shadow:1px 1px #333;
+      background:#000;
+      color:#fff;
+    }
+    .piano-rail{
+      height:12px;
+      width:100%;
+      background:#000;
+      border:2px solid #000;
+      margin-top:6px;
+    }
+
+    /* 钢琴容器永久全黑，夜间模式不变 */
+    body.night .piano-column{
+      background:#000;
+    }
+    body.night .white-key{
+      background:#000;
+      color:#fff;
+      border-color:#000;
+      box-shadow:4px 4px #333;
+    }
+    body.night .black-key{
+      background:#000;
+    }
+    body.night .white-key.active{
+      background:#fff;
+      color:#000;
+      box-shadow:1px 1px #333;
+    }
+    body.night .piano-rail{
+      background:#000;
+      border-color:#000;
+    }
+
+    .relax-panel{display:none;}
+    .relax-panel.active{display:block;}
+    .card-group{display:flex;gap:10px;margin-top:12px;}
+    .relax-card{width:80px;height:120px;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;cursor:pointer;}
+    .pendulum{width:7px;height:140px;background:currentColor;margin:20px auto;transform-origin:top center;}
+    @keyframes swing{0%{transform:rotate(-25deg);}50%{transform:rotate(25deg);}100%{transform:rotate(-25deg);}}
+    .swing-on{animation:swing 0.5s infinite ease-in-out;}
+    .fade-away{animation:fa 0.8s forwards;}
+    @keyframes fa{to{opacity:0;transform:translateY(-40px);}}
+  </style>
+
+  <script>
+    // 只绑定白键交互
+    const rKeys = document.querySelectorAll('.white-key');
+    const rPanels = document.querySelectorAll('.relax-panel');
+    rKeys.forEach(k=>{
+      k.onclick=()=>{
+        rKeys.forEach(x=>x.classList.remove('active'));
+        rPanels.forEach(p=>p.classList.remove('active'));
+        k.classList.add('active');
+        document.getElementById(k.dataset.target).classList.add('active');
+      }
+    })
+    rKeys[0].click();
+
+    // -------- Timer 番茄钟 --------
+    let tSec = 25*60,tRun=false,tInt=null;
+    const rtime = document.getElementById('rtime');
+    const rtStart = document.getElementById('rt-start');
+    const rtPause = document.getElementById('rt-pause');
+    const rtReset = document.getElementById('rt-reset');
+    function renderT(){
+      const m=Math.floor(tSec/60),s=tSec%60;
+      rtime.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    rtStart.onclick=()=>{
+      if(tRun) return;
+      tRun=true;
+      tInt=setInterval(()=>{tSec--;renderT();if(tSec<=0){clearInterval(tInt);tRun=false;}},1000);
+    }
+    rtPause.onclick=()=>{tRun=false;clearInterval(tInt);}
+    rtReset.onclick=()=>{tRun=false;clearInterval(tInt);tSec=25*60;renderT();}
+    renderT();
+
+    // -------- Draw抽卡 --------
+    document.querySelectorAll('.relax-card').forEach(c=>{
+      c.onclick=function(){this.textContent=this.dataset.msg;}
+    })
+
+    // -------- Beat节拍器 WebAudio --------
+    let beatInt=null;
+    let audioCtx=null;
+    let beatRun=false;
+    const pend = document.getElementById('rpen');
+    const bpmInp = document.getElementById('rbpm');
+    const bPlay = document.getElementById('rb-play');
+    const bStop = document.getElementById('rb-stop');
+    function tick(){
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type='sine';osc.frequency.value=880;gain.gain.value=0.2;
+      osc.connect(gain);gain.connect(audioCtx.destination);
+      osc.start();osc.stop(audioCtx.currentTime+0.05);
+    }
+    bPlay.onclick=()=>{
+      if(beatRun) return;
+      const bpm = Number(bpmInp.value);
+      if(isNaN(bpm)||bpm<40||bpm>180) return;
+      beatRun=true;
+      pend.classList.add('swing-on');
+      beatInt = setInterval(tick, (60/bpm)*1000);
+    }
+    bStop.onclick=()=>{
+      beatRun=false;clearInterval(beatInt);
+      pend.classList.remove('swing-on');
+    }
+
+    // -------- Aid情绪急救包 --------
+    const aidBtn = document.getElementById('r-aidbtn');
+    const aidOut = document.getElementById('r-msg');
+    const words = [
+      "You are doing well, allow yourself rest",
+      "Bad mood is temporary, it will pass",
+      "You don't have to recover right away",
+      "Be kind to yourself",
+      "You are stronger than you think"
+    ];
+    aidBtn.onclick=()=>{
+      aidOut.textContent = words[Math.floor(Math.random()*words.length)];
+    }
+
+    // -------- Trash情绪垃圾桶，复用全局 loadData/saveData/todayKey --------
+    const ta = document.getElementById('r-ta');
+    const trashBtn = document.getElementById('r-trashbtn');
+    const trashTip = document.getElementById('r-tip');
+    trashBtn.onclick=()=>{
+      const txt = ta.value.trim();
+      if(!txt){trashTip.textContent="Please write something";return;}
+      trashTip.textContent="Trouble discarded";
+      trashTip.classList.add('fade-away');
+      const d = loadData();
+      const k = todayKey();
+      if(!d[k])d[k]={};
+      if(!d[k].trash)d[k].trash=[];
+      d[k].trash.push(txt);
+      saveData(d);
+      setTimeout(()=>{
+        trashTip.textContent="";trashTip.classList.remove('fade-away');
+        ta.value="";
+      },800);
+    }
+  </script>
+</section>
+<!-- （注：内容由AI生成） -->
