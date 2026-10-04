@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relax</title>
+<style>
+html,body{
+  margin:0;padding:0;background:#fff;color:#000;
+  font-family:Arial,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  min-height:100%;
+  overflow-x:hidden;
+  width:100%;
+}
+#panel-relax{
+  max-width:960px;margin:0 auto;padding:40px 24px;
+  min-height:100vh;box-sizing:border-box;
+}
+.layout{
+  display:flex;gap:32px;align-items:stretch;
+  min-height:calc(100vh - 80px);
+}
+.piano-column{
+  width:190px;flex-shrink:0;padding:8px 16px 8px 0;
+  box-sizing:border-box;display:flex;flex-direction:column;
+  align-self:flex-start;
+}
+.piano-keys{
+  --kw:76px;--gap:4px;position:relative;
+  display:flex;flex-direction:column;width:100%;
+}
+.white-key{
+  position:relative;height:var(--kw);width:100%;box-sizing:border-box;
+  margin-bottom:var(--gap);background:#fff;color:#000;
+  border:2px solid #000;box-shadow:4px 4px 0 #000;
+  cursor:pointer;user-select:none;
+  transition:transform .15s, box-shadow .15s, background .15s, color .15s;
+  z-index:1;display:flex;align-items:center;justify-content:flex-end;
+  padding-right:12px;font-size:17px;letter-spacing:.5px;
+}
+.white-key:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #000;}
+.white-key.active{
+  transform:translate(2px,2px);box-shadow:1px 1px 0 #000;
+  background:#000;color:#fff;
+}
+.black-key{
+  position:absolute;left:0;width:60%;height:50px;background:#000;
+  border:none;box-shadow:none;pointer-events:none;padding:0;
+  user-select:none;transform:translateY(-50%);z-index:2;
+}
+.right-col{flex:1;display:flex;min-width:0;}
+.relax-panel{flex:1;display:none;}
+.relax-panel.active{display:flex;flex-direction:column;}
+.card{
+  flex:1;display:flex;flex-direction:column;
+  padding:30px 34px;
+  background:#fff;
+  border:4px solid #000;
+  box-shadow:9px 9px 0 #000;
+  box-sizing:border-box;
+  transition:transform .3s, box-shadow .3s;
+}
+.card:hover{
+  transform:translate(-4px,-4px);
+  box-shadow:13px 13px 0 #000;
+}
+.card__title{
+  font-size:26px;font-weight:900;color:#000;
+  text-transform:uppercase;letter-spacing:2px;
+  margin:0 0 18px;display:block;line-height:1.05;
+  padding-bottom:14px;
+  position:relative;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.card__title::after{
+  content:"";
+  position:absolute;
+  left:0;bottom:0;
+  width:100%;height:3px;
+  background:#000;
+  transform:translateX(-100%);
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+.card:hover .card__title::after{transform:translateX(0);}
+.card__content{
+  flex:1;display:flex;flex-direction:column;
+  font-size:14px;line-height:1.6;color:#000;font-weight:600;min-height:0;
+}
+.preset-btn,.action-btn{
+  flex:1;
+  padding:10px 0;
+  border:2px solid #000;
+  background:#fff;
+  color:#000;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:transform .15s, box-shadow .15s, background .15s, color .15s;
+  box-shadow:3px 3px 0 #000;
+}
+.preset-btn:hover,.action-btn:hover{
+  transform:translate(-1px,-1px);
+  box-shadow:4px 4px 0 #000;
+}
+.preset-btn:active,.action-btn:active{
+  transform:translate(2px,2px);
+  box-shadow:1px 1px 0 #000;
+}
+.preset-btn.active{
+  background:#000;color:#fff;
+  transform:translate(2px,2px);
+  box-shadow:1px 1px 0 #000;
+}
+.action-btn:disabled{
+  opacity:.3;
+  cursor:not-allowed;
+  transform:none;
+  box-shadow:3px 3px 0 #000;
+}
+.timer-presets{display:flex;gap:8px;margin-bottom:14px;flex-shrink:0;}
+.timer-clock-wrap{
+  flex:1;display:flex;justify-content:center;align-items:center;
+  padding:6px 0;min-height:0;
+}
+.timer-clock{
+  width:100%;max-width:300px;height:auto;display:block;
+  overflow:visible;
+}
+.tk-body{fill:#fff;stroke:#000;stroke-width:2.5;stroke-linejoin:round;}
+.tk-leaf{fill:#fff;stroke:#000;stroke-width:2.5;stroke-linejoin:round;}
+.tk-line{fill:none;stroke:#000;stroke-width:3;stroke-linecap:round;}
+.tk-thin{fill:none;stroke:#000;stroke-width:1.2;}
+.tk-tick{stroke:#000;stroke-width:2.5;stroke-linecap:round;}
+.tk-hand{
+  stroke:#000;stroke-width:3.5;stroke-linecap:round;
+  transition:transform .4s cubic-bezier(.3,.7,.4,1);
+}
+.tk-hand-sec{
+  stroke:#000;stroke-width:1.5;stroke-linecap:round;
+  transition:transform .2s cubic-bezier(.3,.7,.4,1);
+}
+.tk-dot{fill:#000;stroke:none;}
+.tk-progress{
+  fill:none;stroke:#000;stroke-width:3;stroke-linecap:round;
+  transition:stroke-dashoffset .4s linear;
+}
+@keyframes tomato-shake{
+  0%,100%{transform:rotate(0);}
+  20%{transform:rotate(-4deg);}
+  40%{transform:rotate(4deg);}
+  60%{transform:rotate(-3deg);}
+  80%{transform:rotate(3deg);}
+}
+.tk-ringing .tk-body-g{
+  animation:tomato-shake .45s ease-in-out 6;
+  transform-origin:150px 210px;
+}
+.timer-display{
+  font-size:44px;font-weight:900;line-height:1;letter-spacing:6px;
+  text-align:center;padding:14px 0;margin-bottom:14px;
+  border-top:2px solid #000;border-bottom:2px solid #000;
+  font-variant-numeric:tabular-nums;
+  font-family:"Arial Black", Arial, sans-serif;
+  flex-shrink:0;
+}
+@keyframes glitch{
+  0%{transform:translate(2px,2px);}
+  25%{transform:translate(-2px,-2px);}
+  50%{transform:translate(-2px,2px);}
+  75%{transform:translate(2px,-2px);}
+  100%{transform:translate(2px,2px);}
+}
+.glitch{animation:glitch .15s infinite;}
+.timer-actions{display:flex;gap:8px;flex-shrink:0;}
+
+/* ============================================================
+   Draw：无外框 + 卡牌居中 + 字号自适应
+   ============================================================ */
+.draw-hint{
+  font-size:12px;
+  letter-spacing:2px;
+  margin-bottom:16px;
+  text-transform:uppercase;
+  text-align:center;
+  flex-shrink:0;
+}
+.draw-stage{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:0;
+  padding:30px 0 10px;
+  position:relative;
+  overflow:visible;
+}
+.deck{
+  position:relative;
+  width:150px;
+  height:210px;
+  perspective:1000px;
+  transform-style:preserve-3d;
+}
+.dcard{
+  position:absolute;
+  inset:0;
+  background:#fff;
+  border:3px solid #000;
+  box-shadow:5px 5px 0 #000;
+  cursor:pointer;
+  user-select:none;
+  overflow:hidden;
+  transform-origin:50% 100%;
+  transform: rotate(0deg) translate(0,0) scale(1);
+  transition:transform .55s cubic-bezier(.34,1.25,.64,1),
+             opacity .35s,
+             box-shadow .3s;
+  will-change:transform;
+}
+.dcard .num{
+  position:absolute;
+  top:10px;left:12px;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:2px;
+  color:#000;
+  transition:opacity .25s;
+}
+.dcard .txt{
+  position:absolute;
+  inset:0;
+  padding:28px 16px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-weight:600;
+  line-height:1.6;
+  letter-spacing:.3px;
+  color:#000;
+  opacity:0;
+  transform:translateY(10px);
+  transition:opacity .4s .2s, transform .4s .2s;
+  word-break:break-word;
+  overflow:hidden;
+}
+
+.deck:not(.picked):hover .dcard{
+  transform: rotate(calc(var(--i) * 5deg)) translate(calc(var(--i) * 42px), -20px);
+  box-shadow:6px 6px 0 #000;
+}
+.deck:not(.picked) .dcard:hover{
+  transform: rotate(calc(var(--i) * 5deg)) translate(calc(var(--i) * 42px), -50px);
+  box-shadow:8px 8px 0 #000;
+  z-index:10;
+}
+.deck.picked .dcard:not(.chosen){
+  opacity:0;
+  pointer-events:none;
+  transform: rotate(calc(var(--i) * 5deg)) translate(calc(var(--i) * 42px), -20px) scale(.4);
+}
+.deck.picked .dcard.chosen{
+  z-index:100;
+  transform: translateY(-30px) scale(1.7);
+  box-shadow:10px 10px 0 #000;
+  cursor:default;
+}
+.deck.picked .dcard.chosen .num{ opacity:0; }
+.deck.picked .dcard.chosen .txt{
+  opacity:1;
+  transform:translateY(0);
+  padding:30px 24px 24px;
+}
+
+@media (hover:none){
+  .deck.picked .dcard.chosen{
+    transform: translateY(-30px) scale(1.7) rotateX(-6deg) rotateY(6deg);
+  }
+}
+
+.draw-actions{
+  display:flex;
+  gap:8px;
+  margin-top:16px;
+  flex-shrink:0;
+  justify-content:center;
+}
+.draw-actions .action-btn{
+  flex:0 0 auto;
+  min-width:140px;
+  padding:10px 24px;
+}
+
+#relax-draw .card{
+  border:none;
+  box-shadow:none;
+  background:transparent;
+  padding:10px 0;
+}
+#relax-draw .card:hover{
+  transform:none;
+  box-shadow:none;
+}
+#relax-draw .card__title{
+  text-align:center;
+}
+#relax-draw .card__title::after{
+  transform:translateX(0);
+}
+
+/* ===== Beat ===== */
+.beat-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+}
+.beat-row label{
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+#rbpm{
+  flex:1;
+  padding:12px 14px;
+  border:3px solid #000;
+  background:#fff;
+  color:#000;
+  font-family:inherit;
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:2px;
+  outline:none;
+  transition:transform .3s, background .3s, color .3s;
+}
+#rbpm:focus{
+  transform:scale(1.05);
+  background:#000;
+  color:#fff;
+}
+.beat-stage{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:0;
+  padding:10px 0;
+}
+.pendulum{
+  width:6px;
+  height:160px;
+  background:#000;
+  transform-origin:top center;
+  position:relative;
+}
+.pendulum::before{
+  content:"";
+  position:absolute;
+  top:-12px;left:-9px;
+  width:24px;height:24px;
+  border:2px solid #000;
+  background:#fff;
+  border-radius:50%;
+}
+.pendulum::after{
+  content:"";
+  position:absolute;
+  bottom:-14px;left:-14px;
+  width:34px;height:34px;
+  border:2px solid #000;
+  background:#fff;
+  border-radius:50%;
+}
+@keyframes swing{0%{transform:rotate(-25deg);}50%{transform:rotate(25deg);}100%{transform:rotate(-25deg);}}
+.swing-on{animation:swing 0.5s infinite ease-in-out;}
+.beat-actions{display:flex;gap:8px;}
+.aid-msg{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:24px 20px;
+  border-top:3px solid #000;
+  border-bottom:3px solid #000;
+  margin-bottom:18px;
+  font-size:22px;
+  font-weight:900;
+  line-height:1.4;
+  letter-spacing:.5px;
+  min-height:0;
+}
+.aid-actions{display:flex;gap:8px;}
+#r-ta{
+  width:100%;
+  box-sizing:border-box;
+  min-height:180px;
+  border:3px solid #000;
+  background:#fff;
+  color:#000;
+  padding:14px;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.5;
+  outline:none;
+  resize:vertical;
+  margin-bottom:16px;
+  transition:background .3s, color .3s;
+}
+#r-ta:focus{
+  background:#000;
+  color:#fff;
+}
+#r-tip{
+  margin-top:14px;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  min-height:20px;
+}
+.fade-away{animation:fa .8s forwards;}
+@keyframes fa{to{opacity:0;transform:translateY(-16px);}}
+
+/* ===== 夜间模式 ===== */
+body.night{background:#000;}
+body.night .card{background:#000;border-color:#fff;box-shadow:9px 9px 0 #fff;}
+body.night .card:hover{box-shadow:13px 13px 0 #fff;}
+body.night .card__title{color:#fff;}
+body.night .card__title::after{background:#fff;}
+body.night .card__content{color:#fff;}
+body.night .white-key{background:#000;color:#fff;border-color:#fff;box-shadow:4px 4px 0 #fff;}
+body.night .white-key:hover{box-shadow:5px 5px 0 #fff;}
+body.night .white-key.active{background:#fff;color:#000;box-shadow:1px 1px 0 #fff;}
+body.night .black-key{background:#fff;}
+body.night .preset-btn,body.night .action-btn{
+  background:#000;color:#fff;border-color:#fff;box-shadow:3px 3px 0 #fff;
+}
+body.night .preset-btn:hover,body.night .action-btn:hover{box-shadow:4px 4px 0 #fff;}
+body.night .preset-btn:active,body.night .action-btn:active{box-shadow:1px 1px 0 #fff;}
+body.night .preset-btn.active{background:#fff;color:#000;box-shadow:1px 1px 0 #fff;}
+body.night .tk-body{fill:#000;stroke:#fff;}
+body.night .tk-leaf{fill:#000;stroke:#fff;}
+body.night .tk-line{stroke:#fff;}
+body.night .tk-thin{stroke:#fff;}
+body.night .tk-tick{stroke:#fff;}
+body.night .tk-hand{stroke:#fff;}
+body.night .tk-hand-sec{stroke:#fff;}
+body.night .tk-dot{fill:#fff;}
+body.night .tk-progress{stroke:#fff;}
+body.night .timer-display{border-top-color:#fff;border-bottom-color:#fff;}
+body.night .dcard{
+  background:#000;border-color:#fff;box-shadow:5px 5px 0 #fff;
+}
+body.night .dcard .num,
+body.night .dcard .txt{color:#fff;}
+body.night .deck:not(.picked):hover .dcard{box-shadow:6px 6px 0 #fff;}
+body.night .deck:not(.picked) .dcard:hover{box-shadow:8px 8px 0 #fff;}
+body.night .deck.picked .dcard.chosen{box-shadow:10px 10px 0 #fff;}
+body.night #rbpm{background:#000;color:#fff;border-color:#fff;}
+body.night #rbpm:focus{background:#fff;color:#000;}
+body.night .pendulum{background:#fff;}
+body.night .pendulum::before,
+body.night .pendulum::after{background:#000;border-color:#fff;}
+body.night .aid-msg{border-top-color:#fff;border-bottom-color:#fff;}
+body.night #r-ta{background:#000;color:#fff;border-color:#fff;}
+body.night #r-ta:focus{background:#fff;color:#000;}
+body.night #relax-draw .card{
+  border:none;
+  box-shadow:none;
+  background:transparent;
+}
+</style>
+</head>
+<body>
+<section id="panel-relax">
+  <div class="layout">
+    <div class="piano-column">
+      <div class="piano-keys" id="piano-keys"></div>
+    </div>
+    <div class="right-col">
+
+      <div class="relax-panel active" id="relax-timer">
+        <div class="card">
+          <span class="card__title">Timer</span>
+          <div class="card__content">
+            <div class="timer-presets">
+              <button class="preset-btn active" data-sec="1500">25 min</button>
+              <button class="preset-btn" data-sec="300">5 min</button>
+            </div>
+            <div class="timer-clock-wrap">
+              <svg class="timer-clock" id="timer-clock" viewBox="0 0 300 360" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="timer-display" id="rtime">25:00</div>
+            <div class="timer-actions">
+              <button class="action-btn" id="rt-start">Start</button>
+              <button class="action-btn" id="rt-pause">Pause</button>
+              <button class="action-btn" id="rt-reset">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relax-panel" id="relax-draw">
+        <div class="card">
+          <span class="card__title">Draw</span>
+          <div class="card__content">
+            <div class="draw-hint" id="draw-hint">Hover to spread · Click to pick</div>
+            <div class="draw-stage">
+              <div class="deck" id="deck"></div>
+            </div>
+            <div class="draw-actions">
+              <button class="action-btn" id="draw-reset" disabled>Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relax-panel" id="relax-beat">
+        <div class="card">
+          <span class="card__title">Beat</span>
+          <div class="card__content">
+            <div class="beat-row">
+              <label for="rbpm">BPM</label>
+              <input id="rbpm" type="number" min="40" max="180" value="80">
+            </div>
+            <div class="beat-stage">
+              <div class="pendulum" id="rpen"></div>
+            </div>
+            <div class="beat-actions">
+              <button class="action-btn" id="rb-play">Start</button>
+              <button class="action-btn" id="rb-stop">Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relax-panel" id="relax-aid">
+        <div class="card">
+          <span class="card__title">Aid</span>
+          <div class="card__content">
+            <div class="aid-msg" id="r-msg">Click the button to get a comfort word</div>
+            <div class="aid-actions">
+              <button class="action-btn" id="r-aidbtn">Get Comfort</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relax-panel" id="relax-trash">
+        <div class="card">
+          <span class="card__title">Trash</span>
+          <div class="card__content">
+            <textarea id="r-ta" placeholder="Write your trouble here..."></textarea>
+            <div class="beat-actions">
+              <button class="action-btn" id="r-trashbtn">Throw away</button>
+            </div>
+            <div id="r-tip"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+/* ============================================================
+   钢琴键
+   ============================================================ */
+(function buildPiano(){
+  const KEYS = [
+    {label:'Timer', target:'relax-timer', black:true },
+    {label:'Draw',  target:'relax-draw',  black:true },
+    {label:'Beat',  target:'relax-beat',  black:true },
+    {label:'Aid',   target:'relax-aid',   black:true },
+    {label:'Trash', target:'relax-trash', black:false}
+  ];
+  const box = document.getElementById('piano-keys');
+  KEYS.forEach(function(k, i){
+    const wk = document.createElement('div');
+    wk.className = 'white-key';
+    wk.dataset.target = k.target;
+    wk.textContent = k.label;
+    box.appendChild(wk);
+    if (k.black){
+      const bk = document.createElement('span');
+      bk.className = 'black-key';
+      bk.style.top = 'calc((var(--kw) + var(--gap)) * ' + (i + 1) + ' - var(--gap) / 2)';
+      box.appendChild(bk);
+    }
+  });
+})();
+
+const rKeys = document.querySelectorAll('.white-key');
+const rPanels = document.querySelectorAll('.relax-panel');
+rKeys.forEach(k=>{
+  k.onclick=()=>{
+    rKeys.forEach(x=>x.classList.remove('active'));
+    k.classList.add('active');
+    const p = document.getElementById(k.dataset.target);
+    if(p){
+      rPanels.forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+    }
+  }
+});
+rKeys[0].click();
+
+/* ============================================================
+   Timer
+   ============================================================ */
+const CLOCK = (function buildClock(){
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.getElementById('timer-clock');
+  const CX=150, CY=210;
+  const R_PROG=88, R_INNER=80, R_TICK_OUT=78, R_TICK_BIG=64;
+  const LEN_MIN=64, LEN_HOUR=42, LEN_SEC=72;
+  function E(tag, attrs){
+    const e=document.createElementNS(NS,tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  const bodyG = E('g', {'class':'tk-body-g'});
+  svg.appendChild(bodyG);
+  bodyG.appendChild(E('path', {
+    d: 'M 150 122 ' +
+       'C 168 106 196 102 220 112 ' +
+       'C 252 126 272 164 272 210 ' +
+       'C 272 262 220 310 150 310 ' +
+       'C 80 310 28 262 28 210 ' +
+       'C 28 164 48 126 80 112 ' +
+       'C 104 102 132 106 150 122 Z',
+    'class': 'tk-body'
+  }));
+  bodyG.appendChild(E('path', {
+    d: 'M 150 122 C 153 104 146 86 155 68',
+    'class': 'tk-line'
+  }));
+  const ROOT_X = 150, ROOT_Y = 122;
+  const LEAVES = [
+    { dir: [ 0.55, -0.72], len: 52, wid: 14 },
+    { dir: [ 1.0,  -0.10], len: 54, wid: 15 },
+    { dir: [-1.0,  -0.10], len: 54, wid: 15 },
+    { dir: [-0.55, -0.72], len: 52, wid: 14 }
+  ];
+  LEAVES.forEach(function(lf){
+    const dx = lf.dir[0], dy = lf.dir[1];
+    const len = lf.len, w = lf.wid;
+    const px = -dy, py = dx;
+    const tx = ROOT_X + dx*len;
+    const ty = ROOT_Y + dy*len;
+    const mx = ROOT_X + dx*len*0.5;
+    const my = ROOT_Y + dy*len*0.5;
+    const c1x = mx + px*w, c1y = my + py*w;
+    const c2x = mx - px*w, c2y = my - py*w;
+    bodyG.appendChild(E('path', {
+      d: 'M ' + ROOT_X + ' ' + ROOT_Y +
+         ' Q ' + c1x + ' ' + c1y + ' ' + tx + ' ' + ty +
+         ' Q ' + c2x + ' ' + c2y + ' ' + ROOT_X + ' ' + ROOT_Y + ' Z',
+      'class': 'tk-leaf'
+    }));
+  });
+  const C = 2 * Math.PI * R_PROG;
+  const prog = E('circle', {
+    cx: CX, cy: CY, r: R_PROG,
+    'class': 'tk-progress',
+    'stroke-dasharray': C,
+    'stroke-dashoffset': 0,
+    transform: 'rotate(-90 ' + CX + ' ' + CY + ')'
+  });
+  svg.appendChild(prog);
+  svg.appendChild(E('circle', { cx: CX, cy: CY, r: R_INNER, 'class': 'tk-thin' }));
+  for(let i=0;i<12;i++){
+    const a = i/12*Math.PI*2 - Math.PI/2;
+    const s = Math.cos(a), c = Math.sin(a);
+    svg.appendChild(E('line', {
+      x1: CX + s*R_TICK_BIG, y1: CY + c*R_TICK_BIG,
+      x2: CX + s*R_TICK_OUT, y2: CY + c*R_TICK_OUT,
+      'class': 'tk-tick'
+    }));
+  }
+  const handHour = E('line', {
+    x1: CX, y1: CY, x2: CX, y2: CY - LEN_HOUR,
+    'class': 'tk-hand', 'stroke-width': 5
+  });
+  const handMin = E('line', {
+    x1: CX, y1: CY, x2: CX, y2: CY - LEN_MIN,
+    'class': 'tk-hand'
+  });
+  const handSec = E('line', {
+    x1: CX, y1: CY + 12, x2: CX, y2: CY - LEN_SEC,
+    'class': 'tk-hand-sec'
+  });
+  const secDot = E('circle', {
+    cx: CX, cy: CY - LEN_SEC, r: 3.5, 'class': 'tk-dot'
+  });
+  svg.appendChild(handHour);
+  svg.appendChild(handMin);
+  svg.appendChild(handSec);
+  svg.appendChild(secDot);
+  svg.appendChild(E('circle', { cx: CX, cy: CY, r: 6, 'class': 'tk-dot' }));
+  return { handMin, handHour, handSec, secDot, prog, C, CX, CY };
+})();
+
+let tSec = 25*60, tTotal = 25*60, tRun=false, tInt=null;
+const rtime = document.getElementById('rtime');
+const rtStart = document.getElementById('rt-start');
+const rtPause = document.getElementById('rt-pause');
+const rtReset = document.getElementById('rt-reset');
+const presetBtns = document.querySelectorAll('.preset-btn');
+const clockSvg = document.getElementById('timer-clock');
+
+function renderT(){
+  const m=Math.floor(tSec/60), s=tSec%60;
+  rtime.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function renderClock(){
+  const elapsed = tTotal - tSec;
+  const ratio = tTotal > 0 ? elapsed / tTotal : 0;
+  const deg = ratio * 360;
+  CLOCK.handMin.setAttribute('transform',
+    'rotate(' + deg + ' ' + CLOCK.CX + ' ' + CLOCK.CY + ')');
+  CLOCK.handHour.setAttribute('transform',
+    'rotate(' + (-deg) + ' ' + CLOCK.CX + ' ' + CLOCK.CY + ')');
+  const secDeg = (elapsed % 60) * 6;
+  CLOCK.handSec.setAttribute('transform',
+    'rotate(' + secDeg + ' ' + CLOCK.CX + ' ' + CLOCK.CY + ')');
+  CLOCK.secDot.setAttribute('transform',
+    'rotate(' + secDeg + ' ' + CLOCK.CX + ' ' + CLOCK.CY + ')');
+  const remaining = tSec / tTotal;
+  const offset = CLOCK.C * (1 - remaining);
+  CLOCK.prog.setAttribute('stroke-dashoffset', offset);
+}
+presetBtns.forEach(function(btn){
+  btn.onclick = function(){
+    if(tRun) return;
+    presetBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    clearInterval(tInt);
+    tSec = Number(btn.dataset.sec);
+    tTotal = tSec;
+    renderT();
+    renderClock();
+  };
+});
+rtStart.onclick=()=>{
+  if(tRun) return;
+  if(tSec<=0) tSec = tTotal;
+  tRun=true;
+  tInt=setInterval(()=>{
+    tSec--;
+    renderT();
+    renderClock();
+    if(tSec<=0){
+      clearInterval(tInt);
+      tRun=false;
+      clockSvg.classList.add('tk-ringing');
+      rtime.classList.add('glitch');
+      setTimeout(()=>{
+        clockSvg.classList.remove('tk-ringing');
+        rtime.classList.remove('glitch');
+      }, 2800);
+    }
+  },1000);
+};
+rtPause.onclick=()=>{ tRun=false; clearInterval(tInt); };
+rtReset.onclick=()=>{
+  tRun=false; clearInterval(tInt);
+  tSec=tTotal;
+  renderT();
+  renderClock();
+};
+renderT();
+renderClock();
+
+/* ============================================================
+   Draw：现代作家语录 + 伪随机 + 字号自适应
+   ============================================================ */
+const QUOTES = [
+  // 三毛
+  "岁月极美，在于它必然的流逝。——三毛",
+  "心之如何，有似万丈迷津，除了自渡，他人爱莫能助。——三毛",
+  "我笑，便面如春花，定是能感动人的，任他是谁。——三毛",
+  "一个人至少拥有一个梦想，有一个理由去坚强。——三毛",
+  // 杨绛
+  "我们曾如此渴望命运的波澜，到最后才发现，人生最曼妙的风景，竟是内心的淡定与从容。——杨绛",
+  "你的问题主要在于读书不多而想得太多。——杨绛",
+  // 木心
+  "岁月不饶人，我亦未曾饶过岁月。——木心",
+  "生活最好的状态是冷冷清清地风风火火。——木心",
+  // 林清玄
+  "心美一切皆美，情深万象皆深。——林清玄",
+  "以清净心看世界，以欢喜心过生活。——林清玄",
+  // 汪曾祺
+  "人间烟火气，最抚凡人心。——汪曾祺",
+  "四方食事，不过一碗人间烟火。——汪曾祺",
+  // 史铁生
+  "微笑着，去唱生活的歌谣。——史铁生",
+  "人所不能者，即是限制，即是残疾。——史铁生",
+  // 余华
+  "活着就是为了活着本身而活着。——余华",
+  // 王小波
+  "我活在世上，无非想要明白些道理，遇见些有趣的事。——王小波",
+  // 顾城
+  "黑夜给了我黑色的眼睛，我却用它寻找光明。——顾城",
+  // 海子
+  "要有最朴素的生活，与最遥远的梦想。——海子",
+  // 席慕蓉
+  "在年轻的时候，如果你爱上了一个人，请你一定要温柔地对待他。——席慕蓉",
+  // 张爱玲
+  "于千万人之中遇见你所要遇见的人，没有早一步，也没有晚一步。——张爱玲",
+  // 村上春树
+  "当你穿过了暴风雨，你早已不再是原来那个人。——村上春树",
+  "不必太纠结于当下，也不必太忧虑未来，眼前的风景已经和从前不一样了。——村上春树",
+  // 加缪
+  "在隆冬，我终于知道，我身上有一个不可战胜的夏天。——加缪",
+  // 罗曼·罗兰
+  "世界上只有一种真正的英雄主义，那就是在认清生活的真相后依然热爱生活。——罗曼·罗兰",
+  // 泰戈尔
+  "世界以痛吻我，要我报之以歌。——泰戈尔",
+  // 王尔德
+  "我们都在阴沟里，但仍有人仰望星空。——王尔德",
+  // 里尔克
+  "未来走到我们中间，为了能在它发生之前，就已久远地发生。——里尔克",
+  // 加西亚·马尔克斯
+  "生命中真正重要的不是你遭遇了什么，而是你记住了哪些事。——马尔克斯",
+  // 卡尔维诺
+  "地狱里如果有希望，那希望便在地狱的最深处。——卡尔维诺",
+  // 博尔赫斯
+  "我给你一个久久地望着孤月的人的悲哀。——博尔赫斯",
+  // 佩索阿
+  "我一无所有，但我在梦中拥有整个世界。——佩索阿"
+];
+
+/* 伪随机：线性同余发生器 */
+function seededShuffle(arr, seed){
+  const a = arr.slice();
+  let s = (seed >>> 0) || 1;
+  function rnd(){
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  }
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+/* 字号自适应：按去掉空白和破折号后的实际中文字数分档
+   卡片内容区约 118 × 180 px */
+function fitQuote(el, text){
+  const clean = text.replace(/[\s—\-·（）()【】《》]/g, '');
+  const len = clean.length;
+  let size;
+  if(len <= 14)      size = 19;
+  else if(len <= 22) size = 17;
+  else if(len <= 32) size = 15;
+  else if(len <= 46) size = 13;
+  else if(len <= 62) size = 11.5;
+  else if(len <= 82) size = 10;
+  else               size = 9;
+  el.style.fontSize = size + 'px';
+  el.style.lineHeight = (size <= 10 ? 1.55 : 1.6);
+  return size;
+}
+
+(function buildDraw(){
+  const deck = document.getElementById('deck');
+  const resetBtn = document.getElementById('draw-reset');
+  const hint = document.getElementById('draw-hint');
+  let chosen = null;
+  let tiltReady = false;
+
+  const seed = Date.now() & 0xffffffff;
+  const picked = seededShuffle(QUOTES, seed).slice(0, 9);
+
+  picked.forEach(function(quote, idx){
+    const i = idx - 4;
+    const card = document.createElement('div');
+    card.className = 'dcard';
+    card.style.setProperty('--i', i);
+
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = String(idx + 1).padStart(2, '0');
+
+    const txt = document.createElement('span');
+    txt.className = 'txt';
+    txt.textContent = quote;
+    // 按文字长度算基准字号
+    fitQuote(txt, quote);
+
+    card.appendChild(num);
+    card.appendChild(txt);
+    deck.appendChild(card);
+  });
+
+  deck.addEventListener('click', function(e){
+    if(chosen) return;
+    const card = e.target.closest('.dcard');
+    if(!card) return;
+    chosen = card;
+    card.classList.add('chosen');
+    deck.classList.add('picked');
+    resetBtn.disabled = false;
+    hint.textContent = 'Nice pick · Move mouse to tilt';
+    setTimeout(function(){ tiltReady = true; }, 620);
+  });
+
+  let mx = 0, my = 0, ticking = false;
+  function updateTilt(){
+    ticking = false;
+    if(!chosen || !tiltReady) return;
+    const r = chosen.getBoundingClientRect();
+    const px = (mx - r.left) / r.width  - 0.5;
+    const py = (my - r.top)  / r.height - 0.5;
+    const rx = (-py * 14).toFixed(2);
+    const ry = ( px * 14).toFixed(2);
+    chosen.style.transform =
+      'perspective(900px) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg) ' +
+      'translateY(-30px) scale(1.7)';
+  }
+  deck.addEventListener('mousemove', function(e){
+    if(!chosen || !tiltReady) return;
+    mx = e.clientX; my = e.clientY;
+    if(!ticking){ ticking = true; requestAnimationFrame(updateTilt); }
+  });
+  deck.addEventListener('mouseleave', function(){
+    if(chosen && tiltReady){
+      chosen.style.transform = '';
+    }
+  });
+
+  resetBtn.addEventListener('click', function(){
+    if(!chosen) return;
+    tiltReady = false;
+    chosen.style.transform = '';
+    chosen.classList.remove('chosen');
+    deck.classList.remove('picked');
+    chosen = null;
+    resetBtn.disabled = true;
+    hint.textContent = 'Hover to spread · Click to pick';
+  });
+})();
+
+/* ============================================================
+   Beat
+   ============================================================ */
+let beatInt=null, audioCtx=null, beatRun=false;
+const pend = document.getElementById('rpen');
+const bpmInp = document.getElementById('rbpm');
+const bPlay = document.getElementById('rb-play');
+const bStop = document.getElementById('rb-stop');
+
+function tick(){
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type='sine'; osc.frequency.value=880; gain.gain.value=0.2;
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime+0.05);
+}
+bPlay.onclick=()=>{
+  if(beatRun) return;
+  const bpm = Number(bpmInp.value);
+  if(isNaN(bpm)||bpm<40||bpm>180) return;
+  beatRun=true;
+  pend.classList.add('swing-on');
+  pend.style.animationDuration = (60/bpm) + 's';
+  beatInt = setInterval(tick, (60/bpm)*1000);
+};
+bStop.onclick=()=>{
+  beatRun=false; clearInterval(beatInt);
+  pend.classList.remove('swing-on');
+};
+
+/* ============================================================
+   Aid
+   ============================================================ */
+const aidBtn = document.getElementById('r-aidbtn');
+const aidOut = document.getElementById('r-msg');
+const words = [
+  "You are doing well, allow yourself rest",
+  "Bad mood is temporary, it will pass",
+  "You don't have to recover right away",
+  "Be kind to yourself",
+  "You are stronger than you think"
+];
+aidBtn.onclick=()=>{
+  aidOut.textContent = words[Math.floor(Math.random()*words.length)];
+};
+
+/* ============================================================
+   Trash
+   ============================================================ */
+const ta = document.getElementById('r-ta');
+const trashBtn = document.getElementById('r-trashbtn');
+const trashTip = document.getElementById('r-tip');
+trashBtn.onclick=()=>{
+  const txt = ta.value.trim();
+  if(!txt){ trashTip.textContent = "Please write something"; return; }
+  trashTip.textContent = "Trouble discarded";
+  trashTip.classList.remove('fade-away');
+  void trashTip.offsetWidth;
+  trashTip.classList.add('fade-away');
+  try{
+    const d = JSON.parse(localStorage.getItem('mindmate') || '{}');
+    const k = (function(){
+      const dd=new Date();
+      return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0');
+    })();
+    if(!d[k]) d[k]={};
+    if(!d[k].trash) d[k].trash=[];
+    d[k].trash.push(txt);
+    localStorage.setItem('mindmate', JSON.stringify(d));
+  }catch(e){}
+  setTimeout(()=>{
+    trashTip.textContent="";
+    trashTip.classList.remove('fade-away');
+    ta.value="";
+  },800);
+};
+
+/* ============================================================
+   夜间模式
+   ============================================================ */
+(function(){
+  const h=new Date().getHours();
+  if(h>=19||h<7) document.body.classList.add('night');
+})();
+</script>
+</body>
+</html>
