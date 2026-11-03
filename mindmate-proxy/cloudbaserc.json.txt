@@ -1,0 +1,13 @@
+{
+  "envId": "accessible-cheetah-d3cd5e45c3732",
+  "functionRoot": "./functions",
+  "functions": [
+    {
+      "name": "llm-proxy",
+      "runtime": "Nodejs18.15",
+      "timeout": 30,
+      "memorySize": 256,
+      "handler": "index.main"
+    }
+  ]
+}
